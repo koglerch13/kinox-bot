@@ -5,7 +5,7 @@ let telegram = require('telegram-bot-api');
 let Datastore = require('nedb');
 
 //Telegram
-const TELEGRAM_TOKEN = "182972859:AAHtyyLUoasqi3m50LXhjTmFA4CjyQhT-UY";
+const TELEGRAM_TOKEN = "";
 let api = new telegram({token: TELEGRAM_TOKEN, updates: {enabled: true}});
 
 //Kinox
