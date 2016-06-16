@@ -1,0 +1,4 @@
+node_modules/*
+datastore
+.vscode/*
+jsconfig.json

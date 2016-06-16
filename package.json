@@ -1,0 +1,17 @@
+{
+  "name": "kinox-bot",
+  "version": "1.0.0",
+  "description": "A Telegram bot that notifies you if new episodes are available on Kinox.tv",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Christian Kogler",
+  "license": "MIT",
+  "dependencies": {
+    "cheerio": "^0.20.0",
+    "nedb": "^1.8.0",
+    "requestify": "^0.1.17",
+    "telegram-bot-api": "^1.1.0"
+  }
+}
