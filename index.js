@@ -1,23 +1,23 @@
 /*jshint esversion: 6 */
-let requestify = require('requestify');
-let cheerio = require('cheerio');
-let telegram = require('telegram-bot-api');
-let Datastore = require('nedb');
+const requestify = require('requestify');
+const cheerio = require('cheerio');
+const telegram = require('telegram-bot-api');
+const Datastore = require('nedb');
 
 //Telegram
-const TELEGRAM_TOKEN = "";
-let api = new telegram({token: TELEGRAM_TOKEN, updates: {enabled: true}});
+const TELEGRAM_TOKEN = "182972859:AAGvGMOG6Fo-z-Mp3ZpODWgc6pXIt2H4krc";
+const api = new telegram({token: TELEGRAM_TOKEN, updates: {enabled: true}});
 
 //Kinox
 const KINOX_REGEX = new RegExp("http.?\\://kinox\\.\\w\\w\\/Stream\\/.*\\.html");
 const TITLE_REGEX = new RegExp("(.*)\\((\\d{4})\\)");
 
 //config
-let interval = 10000;
-let scheduleInterval = 20000;
+const interval = 10000;
+const scheduleInterval = 20000;
 
 //Database
-let db = new Datastore({filename: 'datastore', autoload: true}); 
+const db = new Datastore({filename: 'datastore', autoload: true}); 
 
 //Messages
 const START_MESSAGE = "Hi! Send me your links, and I will notify you if new episodes arrive ;-)";
@@ -25,23 +25,20 @@ const FAIL_MESSAGE = "Sorry, your message appears to have the wrong format :-(\n
 const SUCCESS_MESSAGE = "Thanks! You will be informed, as soon as a new Episode is available!";
 const NOTIFY_MESSAGE = (title) => { return 'A new episode of "' + title + '" is now available!';};
 
-let scrape = (url) => {
+const scrape = (url) => {
     return requestify.get(url).then((response) => {
         var $ = cheerio.load(response.getBody());
         var title = TITLE_REGEX.exec($('title').text())[1];
-        if(title === null) {
-            reject();
-        }
-        var seasons = $('#SeasonSelection option');
-        var episodes = 0;
-        for(var i = 0; i < seasons.length; i++) {
-            episodes += seasons[i].attribs.rel.split(",").length;
-        }
+        if(title === null) { reject("No title"); }
+        var seasons = $('#SeasonSelection option').toArray();
+        var episodes = seasons.reduce((previous, current) => {
+            return previous + current.attribs.rel.split(",").length;
+        }, 0);
         return {url: url, title: title, episodes: episodes};
     });
 };
 
-let find = (url) => {
+const find = (url) => {
     return new Promise(function(resolve, reject) {
         db.findOne({url: url}, (error, doc) => {
             if(error) { reject(error); }
@@ -54,7 +51,7 @@ let find = (url) => {
     });
 };
 
-let findAll = () => {
+const findAll = () => {
     return new Promise(function(resolve, reject) {
         db.find({}, (error, documents) => {
             if(error) { reject(error); }
@@ -63,7 +60,7 @@ let findAll = () => {
     });
 };
 
-let create = (url, title, episodes, lastVisited) => {
+const create = (url, title, episodes, lastVisited) => {
     return new Promise(function(resolve, reject) {
         var entry = {
             url: url,
@@ -79,7 +76,7 @@ let create = (url, title, episodes, lastVisited) => {
     });
 };
 
-let updateDatabase = (url, episodes, lastVisited) => {
+const updateDatabase = (url, episodes, lastVisited) => {
     return new Promise(function(resolve, reject) {
         db.update({url: url}, {$set: {episodes: episodes, lastVisited: lastVisited}}, {}, function(error, numReplaced) {
             if(error) { reject(error); }
@@ -88,7 +85,7 @@ let updateDatabase = (url, episodes, lastVisited) => {
     });
 };
 
-let subscribe = (url, chat) => {
+const subscribe = (url, chat) => {
     return new Promise(function(resolve, reject) {
         db.update({url: url}, {$addToSet: {subscribers: chat}}, {}, function(error, numReplaced) {
             if(error) { reject(error); }
@@ -98,18 +95,10 @@ let subscribe = (url, chat) => {
    
 };
 
-let sendMessage = (chat, message) => {
+const sendMessage = (chat, message) => {
     return api.sendMessage({
         chat_id: chat,
         text: message
-    });
-};
-
-let notifySubscribers = (url) => {
-    return find(url).then((result) => {
-        result.subscribers.forEach((item) => {
-            sendMessage(item, NOTIFY_MESSAGE(result.title));
-        });
     });
 };
 
@@ -133,7 +122,6 @@ api.on('update', (response) => {
             return subscribe(message, chat);
         })
         .then(() => {
-            console.log("informing....");
             return sendMessage(chat, SUCCESS_MESSAGE);
         });
     } else {
@@ -142,7 +130,7 @@ api.on('update', (response) => {
 });
 
 //scrape regularly
-let scheduled = () => {
+const scheduled = () => {
     findAll().then((docs) => {
         docs.forEach((item, index) => {
             scrape(item.url)//TODO check lastVisited
@@ -152,7 +140,10 @@ let scheduled = () => {
                 })
                 .then((newEpisodes) => {
                     if(newEpisodes) {
-                        notifySubscribers(item.url);
+                        updateDatabase(item.url, scrapeResult.episodes);
+                        item.subscribers.forEach((subscriber) => {
+                            sendMessage(subscriber, NOTIFY_MESSAGE(item.title));
+                        });
                     }
                 });
             });
